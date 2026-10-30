@@ -42,8 +42,11 @@ try{
   await page.locator('#saveButton').click();
   await page.waitForTimeout(1000);
 
+  console.log('DIAGNÓSTICO GUARDADO:',await page.locator('#toast').textContent());
   await page.locator('[data-tab="library"]').click();
-  await page.locator('.library-card').first().waitFor();
+  await page.waitForTimeout(1200);
+  console.log('DIAGNÓSTICO BIBLIOTECA:',await page.locator('#libraryGrid').textContent(),'CONTADOR:',await page.locator('#libraryCount').textContent(),'ERRORES:',errors);
+  if(await page.locator('.library-card').count()===0)throw new Error('No se creó la tarjeta de biblioteca. Revisa el diagnóstico anterior');
   assert.equal(await page.locator('.library-card').count(),1);
   await page.locator('.favorite').first().click();
   await page.locator('#libraryFavorites').check();

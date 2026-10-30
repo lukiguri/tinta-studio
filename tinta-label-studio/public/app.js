@@ -447,8 +447,8 @@ async function saveDesign(){
   readForm();
   const saveButton=$('saveButton');if(saveButton.disabled)return;
   saveButton.disabled=true;saveButton.textContent='Guardando…';
-  if(!validateSize(state.widthMm,state.heightMm)){toast('Medidas no válidas',true);return;}
-  if(state.shape==='round-pair'&&!validCircleDiameter(state.widthMm,state.heightMm,state.circleDiameterMm)){toast('Diámetro de círculo inválido',true);return;}
+  if(!validateSize(state.widthMm,state.heightMm)){toast('Medidas no válidas',true);saveButton.disabled=false;saveButton.textContent='Guardar diseño';return;}
+  if(state.shape==='round-pair'&&!validCircleDiameter(state.widthMm,state.heightMm,state.circleDiameterMm)){toast('Diámetro de círculo inválido',true);saveButton.disabled=false;saveButton.textContent='Guardar diseño';return;}
   try {
     const id=state.loadedId||crypto.randomUUID();
     const priorRecord=state.loadedId?(await getRecords()).find(r=>r.id===id):null;
@@ -472,10 +472,14 @@ async function saveDesign(){
 async function refreshLibraryCount(){
   try{$('libraryCount').textContent=(await getRecords()).length;}catch{$('libraryCount').textContent='—';}
 }
+let libraryRenderVersion=0;
 async function renderLibrary(){
-  const grid=$('libraryGrid');grid.replaceChildren();
+  const run=++libraryRenderVersion;
+  const grid=$('libraryGrid');
   try{
     const items=await getRecords();
+    if(run!==libraryRenderVersion)return;
+    grid.replaceChildren();
     $('libraryCount').textContent=items.length;$('libraryEmpty').hidden=items.length>0;
     const query=($('librarySearch')?.value||'').trim().toLocaleLowerCase('es');
     const category=$('libraryCategory')?.value||'';

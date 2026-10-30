@@ -40,6 +40,7 @@ try{
   await page.locator('#layerScale').evaluate(el=>{el.value='140';el.dispatchEvent(new Event('input',{bubbles:true}));});
   assert.equal(await page.locator('#layerScale').inputValue(),'140');
   await page.locator('#saveButton').click();
+  await page.waitForTimeout(1000);
 
   await page.locator('[data-tab="library"]').click();
   await page.locator('.library-card').first().waitFor();

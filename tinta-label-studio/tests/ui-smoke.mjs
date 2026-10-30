@@ -37,7 +37,7 @@ try{
   await page.locator('#layersDetails summary').click();
   await page.locator('#addLayerStar').click();
   assert.equal(await page.locator('.layer-entry').count(),1);
-  await page.locator('#layerScale').fill('140');
+  await page.locator('#layerScale').evaluate(el=>{el.value='140';el.dispatchEvent(new Event('input',{bubbles:true}));});
   assert.equal(await page.locator('#layerScale').inputValue(),'140');
   await page.locator('#saveButton').click();
 

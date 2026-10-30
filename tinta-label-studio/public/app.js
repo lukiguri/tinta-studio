@@ -8,18 +8,22 @@ const DEFAULTS = {
   style: 'comic', model: 'gpt-image-2.5-flare', quality: 'medium', textMode: 'editable',
   bwMode: 'solid', fontFamily: 'heavy', fontSize: 43,
   designTitle: 'POL · gato y AirTag', textX: .76, textY: .53,
+  designCategory:'Sin categoría',designTags:'',variantCount:1,layers:[],
+  artScale:1,artRotation:0,artOffsetX:0,artOffsetY:0,refineHistory:[],
 };
 let state = {...DEFAULTS, references: [], imageData: null, imageElement: null, loadedId: null};
 let dbPromise;
 let generationInProgress = false;
 let toastTimer;
+let selectedLayerId=null;
+const layerImageCache=new Map();
 const FONT_MAP = {
   heavy: '900 1px Arial, Helvetica, sans-serif',
   rounded: '900 1px "Trebuchet MS", Arial, sans-serif',
   serif: '900 1px Georgia, "Times New Roman", serif',
   mono: '900 1px "Courier New", monospace',
 };
-const INPUTS = ['printer','widthMm','heightMm','dpi','shape','circleDiameterMm','pairTextMode','secondLabelName','labelName','description','style','model','quality','bwMode','fontFamily','fontSize','designTitle'];
+const INPUTS = ['printer','widthMm','heightMm','dpi','shape','circleDiameterMm','pairTextMode','secondLabelName','labelName','description','style','model','quality','bwMode','fontFamily','fontSize','designTitle','designCategory','designTags','variantCount'];
 const MIME = ['image/png','image/jpeg','image/webp'];
 const PRINTER_DPI = Object.freeze({'NIIMBOT D11-H':300,'NIIMBOT D11':203,'NIIMBOT D110':203});
 
@@ -71,7 +75,7 @@ function readForm() {
   INPUTS.forEach(key=>{
     const el=$(key);
     if(!el) return;
-    state[key] = ['widthMm','heightMm','dpi','fontSize','circleDiameterMm'].includes(key) ? Number(el.value) : el.value;
+    state[key] = ['widthMm','heightMm','dpi','fontSize','circleDiameterMm','variantCount'].includes(key) ? Number(el.value) : el.value;
   });
   state.textMode=document.querySelector('input[name="textMode"]:checked').value;
   updateMeasurements();
@@ -134,7 +138,12 @@ function drawRoundPair(ctx, w, h, {preview=false, previewGuides=false}={}) {
       const side=c.r*2;
       const scale=Math.max(side/img.naturalWidth,side/img.naturalHeight);
       const iw=img.naturalWidth*scale,ih=img.naturalHeight*scale;
-      ctx.drawImage(img,c.x-iw/2,c.y-ih/2,iw,ih);
+      ctx.save();
+      ctx.translate(c.x+Number(state.artOffsetX||0)*side*.35,c.y+Number(state.artOffsetY||0)*side*.35);
+      ctx.rotate(Number(state.artRotation||0)*Math.PI/180);
+      ctx.scale(Number(state.artScale||1),Number(state.artScale||1));
+      ctx.drawImage(img,-iw/2,-ih/2,iw,ih);
+      ctx.restore();
     }
     const label=idx===1 && state.pairTextMode==='alternate' && state.textMode==='editable' ? String(state.secondLabelName||'').trim() : String(state.labelName||'').trim();
     if(state.textMode==='editable'&&label){
@@ -154,6 +163,7 @@ function drawRoundPair(ctx, w, h, {preview=false, previewGuides=false}={}) {
       ctx.strokeStyle='#fff';ctx.lineWidth=Math.max(1,px*.13);ctx.strokeText(label,x,y);
       ctx.fillStyle='#000';ctx.fillText(label,x,y);
     }
+    drawExtraLayers(ctx,c.x-c.r,c.y-c.r,c.r*2,c.r*2,preview);
     ctx.restore();
     if(preview){
       ctx.save();ctx.beginPath();ctx.arc(c.x,c.y,c.r,0,Math.PI*2);
@@ -177,7 +187,12 @@ function drawComposition(canvas,w,h,{preview=false,previewGuides=false}={}) {
     // Cover the label while preserving proportions; generated ratios normally match the paper.
     const scale=Math.min(w/img.naturalWidth,h/img.naturalHeight);
     const iw=img.naturalWidth*scale,ih=img.naturalHeight*scale;
-    ctx.drawImage(img,(w-iw)/2,(h-ih)/2,iw,ih);
+    ctx.save();
+    ctx.translate(w/2+Number(state.artOffsetX||0)*w*.35,h/2+Number(state.artOffsetY||0)*h*.35);
+    ctx.rotate(Number(state.artRotation||0)*Math.PI/180);
+    ctx.scale(Number(state.artScale||1),Number(state.artScale||1));
+    ctx.drawImage(img,-iw/2,-ih/2,iw,ih);
+    ctx.restore();
   }
   if(state.textMode==='editable'&&state.labelName.trim()){
     const margin=Math.min(w,h)*.065;
@@ -195,6 +210,7 @@ function drawComposition(canvas,w,h,{preview=false,previewGuides=false}={}) {
     ctx.strokeStyle='white';ctx.lineWidth=Math.max(2,px*.11);ctx.strokeText(text,x,y);
     ctx.fillStyle='#0a0a0a';ctx.fillText(text,x,y);
   }
+  drawExtraLayers(ctx,0,0,w,h,preview);
   if(previewGuides) {
     const inset=Math.max(3,Math.min(w,h)*.07);
     ctx.save();ctx.lineWidth=Math.max(1,Math.min(w,h)*.005);
@@ -220,6 +236,7 @@ function renderPreview(){
   $('previewChip').textContent=state.imageElement?'ARTE GENERADO':'SIN GENERAR';
   $('previewChip').classList.toggle('generated',!!state.imageElement);
   $('refineButton').disabled=!state.imageElement||generationInProgress;
+  if($('refinePanel'))$('refinePanel').hidden=!state.imageElement;
 }
 function setGenerationBusy(value){
   generationInProgress=value;
@@ -288,11 +305,13 @@ async function generate(refine=false){
   if(state.shape==='round-pair'&&!validCircleDiameter(state.widthMm,state.heightMm,state.circleDiameterMm)){toast('Revisa el diámetro de los círculos',true);return;}
   if(!state.description.trim()&&!state.labelName.trim()){toast('Escribe una descripción o un nombre',true);return;}
   if(refine&&!state.imageData)return;
+  const refineInstruction=refine?$('refineInstructions').value.trim():'';
+  if(refine&&!refineInstruction){toast('Escribe qué quieres modificar en el diseño',true);return;}
   const password=getPassword();
   if(!password){toast('Primero configura la contraseña en Ajustes',true);updateTab('settings');return;}
   if(generationInProgress)return;
   setGenerationBusy(true);
-  generationMessage(refine?'Modificando la imagen original y respetando tus indicaciones…':'Enviando instrucciones a OpenAI para crear tu etiqueta…');
+  generationMessage(refine?'Aplicando tu nuevo cambio a la ilustración…':`Generando ${state.variantCount===1?'1 propuesta':state.variantCount+' propuestas'}…`);
   try{
     const body={
       printer:state.printer,widthMm:state.widthMm,heightMm:state.heightMm,
@@ -301,13 +320,23 @@ async function generate(refine=false){
       textMode:state.textMode,model:state.model,quality:state.quality,
       bwMode:state.bwMode,references:state.references.map(r=>r.data),
       refine, currentImage:refine?await resizeDataUrl(state.imageData,1152):null,
+      refineInstruction,refineHistory:refine?(state.refineHistory||[]):[],
+      variantCount:refine?1:Number(state.variantCount)||1,
     };
     const response=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json','x-app-password':password},body:JSON.stringify(body)});
     let result;
     try{result=await response.json();}catch{throw new Error('Respuesta inválida del servidor. Si tarda demasiado, comprueba el tiempo máximo de la función.');}
     if(!response.ok)throw new Error(result.error||`Error HTTP ${response.status}`);
     if(!result.image)throw new Error('OpenAI no devolvió ninguna imagen');
-    await setArt(result.image);
+    const images=Array.isArray(result.images)&&result.images.length?result.images:[result.image];
+    state.variants=refine?[]:images;
+    renderVariantChoices();
+    await setArt(images[0]);
+    if(refine){
+      state.refineHistory=[...(state.refineHistory||[]),refineInstruction].slice(-8);
+      $('refineInstructions').value='';
+      renderRefineHistory();
+    }else{state.refineHistory=[];renderRefineHistory();}
     generationMessage(`¡Diseño listo! Creado con ${result.modelLabel||'OpenAI'}. Puedes mover el texto, guardarlo o exportarlo.`, 'success');
     toast('¡Etiqueta creada!');
   }catch(e){generationMessage(e.message,'error');toast('No se pudo generar la imagen',true);}
@@ -420,12 +449,18 @@ async function saveDesign(){
   if(state.shape==='round-pair'&&!validCircleDiameter(state.widthMm,state.heightMm,state.circleDiameterMm)){toast('Diámetro de círculo inválido',true);return;}
   try {
     const id=state.loadedId||crypto.randomUUID();
+    const priorRecord=state.loadedId?(await getRecords()).find(r=>r.id===id):null;
     await saveRecord({id,updatedAt:new Date().toISOString(),
       title:state.designTitle.trim()||state.labelName.trim()||'Etiqueta sin título',
       properties:Object.fromEntries(Object.keys(DEFAULTS).map(k=>[k,state[k]])),
       textX:state.textX,textY:state.textY,
-      imageData:state.imageData,references:state.references,
-      thumbnail:thumbnail()
+      imageData:state.imageData,references:state.references,variants:state.variants||[],
+      thumbnail:thumbnail(),favorite:priorRecord?.favorite||false,
+      versions:(priorRecord?[
+        {title:priorRecord.title,updatedAt:priorRecord.updatedAt,properties:priorRecord.properties,
+         textX:priorRecord.textX,textY:priorRecord.textY,imageData:priorRecord.imageData,
+         thumbnail:priorRecord.thumbnail,references:priorRecord.references,variants:priorRecord.variants||[]},
+        ...(priorRecord.versions||[])].slice(0,6):[])
     });
     state.loadedId=id;toast('Etiqueta guardada en tu biblioteca');refreshLibraryCount();
   }catch(e){toast(`No se ha guardado: ${e.message}`,true);}
@@ -438,7 +473,17 @@ async function renderLibrary(){
   try{
     const items=await getRecords();
     $('libraryCount').textContent=items.length;$('libraryEmpty').hidden=items.length>0;
-    for(const item of items){
+    const query=($('librarySearch')?.value||'').trim().toLocaleLowerCase('es');
+    const category=$('libraryCategory')?.value||'';
+    const favorites=!!$('libraryFavorites')?.checked;
+    const filtered=items.filter(item=>{
+      const p=item.properties||{};
+      return (!category||(p.designCategory||'Sin categoría')===category) &&
+        (!favorites||item.favorite) &&
+        (!query||[item.title,p.labelName,p.description,p.designTags,p.designCategory].join(' ').toLocaleLowerCase('es').includes(query));
+    });
+    $('libraryNoMatches').hidden=!(items.length&&!filtered.length);
+    for(const item of filtered){
       const card=document.createElement('article');card.className='library-card';
       const pic=document.createElement('div');pic.className='library-card-image';
       const img=document.createElement('img');img.src=item.thumbnail||'';img.alt=`Vista previa de ${item.title}`;pic.appendChild(img);
@@ -450,19 +495,32 @@ async function renderLibrary(){
       const open=document.createElement('button');open.type='button';open.textContent='Abrir y editar';open.addEventListener('click',()=>openDesign(item));
       const del=document.createElement('button');del.className='delete';del.type='button';del.textContent='×';del.title='Eliminar etiqueta';del.setAttribute('aria-label',`Eliminar ${item.title}`);
       del.addEventListener('click',async()=>{if(!confirm(`¿Eliminar «${item.title}» de la biblioteca?`))return;await deleteRecord(item.id);if(state.loadedId===item.id)state.loadedId=null;renderLibrary();toast('Etiqueta eliminada');});
-      actions.append(open,del);body.append(title,meta,actions);card.append(pic,body);grid.appendChild(card);
+      const fav=document.createElement('button');fav.type='button';fav.className='favorite '+(item.favorite?'active':'');
+      fav.title=item.favorite?'Quitar de favoritos':'Marcar favorito';fav.setAttribute('aria-label',fav.title);
+      fav.textContent=item.favorite?'★':'☆';
+      fav.addEventListener('click',async()=>{await saveRecord({...item,favorite:!item.favorite});renderLibrary();});
+      const history=document.createElement('button');history.type='button';history.className='history-link';
+      history.textContent='Historial '+(item.versions?.length||0);history.addEventListener('click',()=>showDesignHistory(item));
+      actions.append(open,fav,history,del);body.append(title,meta,actions);card.append(pic,body);grid.appendChild(card);
     }
   }catch(e){grid.textContent=`No se pudo leer la biblioteca: ${e.message}`;}
 }
 async function openDesign(item){
-  state={...DEFAULTS,...item.properties,textX:item.textX??.76,textY:item.textY??.53,references:Array.isArray(item.references)?item.references:[],imageData:null,imageElement:null,loadedId:item.id};
+  state={...DEFAULTS,...item.properties,
+    layers:Array.isArray(item.properties?.layers)?item.properties.layers:[],
+    refineHistory:Array.isArray(item.properties?.refineHistory)?item.properties.refineHistory:[],
+    textX:item.textX??.76,textY:item.textY??.53,
+    references:Array.isArray(item.references)?item.references:[],variants:item.variants||[],
+    imageData:null,imageElement:null,loadedId:item.id};
+  selectedLayerId=null;await loadLayerImages();renderLayerList();renderVariantChoices();renderRefineHistory();
   fillForm();
   if(item.imageData){try{await setArt(item.imageData);}catch{toast('No se pudo cargar la ilustración',true);}}
   generationMessage('Diseño abierto desde tu biblioteca. Al guardar se actualizará esta misma etiqueta.');
   updateTab('create');toast('Etiqueta cargada');
 }
 function newDesign(){
-  state={...DEFAULTS,labelName:'',description:'',designTitle:'',references:[],imageData:null,imageElement:null,loadedId:null};
+  state={...DEFAULTS,labelName:'',description:'',designTitle:'',references:[],layers:[],variants:[],refineHistory:[],imageData:null,imageElement:null,loadedId:null};
+  selectedLayerId=null;renderLayerList();renderVariantChoices();renderRefineHistory();
   fillForm();generationMessage('Nuevo diseño. Describe una etiqueta o añade fotografías y pulsa Generar con IA.');updateTab('create');
 }
 async function exportBackup(){
@@ -496,6 +554,7 @@ async function importBackup(file){
 function setupDragText(){
   const canvas=$('labelCanvas');let dragging=false;
   function setPos(e){
+    if($('layersDetails')?.open)return;
     if(state.textMode!=='editable'||!state.labelName.trim())return;
     const rect=canvas.getBoundingClientRect();
     let x=(e.clientX-rect.left)/rect.width;
@@ -514,6 +573,7 @@ function setupDragText(){
     renderPreview();
   }
   canvas.addEventListener('pointerdown',e=>{
+    if($('layersDetails')?.open)return;
     if(state.textMode!=='editable'||!state.labelName.trim())return;
     dragging=true;canvas.setPointerCapture(e.pointerId);setPos(e);
   });
@@ -568,6 +628,7 @@ function wire(){
   $('testConnection').addEventListener('click',()=>{savePassword($('appPassword').value);checkConnection();});
   $('rememberPassword').addEventListener('change',()=>savePassword($('appPassword').value));
   setupDragText();
+  initStudioV2();
 }
 wire();renderPreview();refreshLibraryCount();
 if('serviceWorker' in navigator&&location.protocol==='https:')window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));

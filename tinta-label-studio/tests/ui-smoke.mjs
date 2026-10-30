@@ -49,12 +49,21 @@ try{
   if(await page.locator('.library-card').count()===0)throw new Error('No se creó la tarjeta de biblioteca. Revisa el diagnóstico anterior');
   assert.equal(await page.locator('.library-card').count(),1);
   await page.locator('.favorite').first().click();
+  await page.locator('.favorite.active').first().waitFor();
   await page.locator('#libraryFavorites').check();
   assert.equal(await page.locator('.library-card').count(),1);
   await page.locator('#librarySearch').fill('absolutamente-inexistente');
   assert.equal(await page.locator('.library-card').count(),0);
   await page.locator('#librarySearch').fill('');
   await page.locator('.library-card').first().waitFor();
+  await page.locator('.library-card-buttons button').first().click();
+  await page.locator('#description').fill('El mismo personaje, con menos detalles');
+  await page.locator('#saveButton').click();
+  await page.waitForTimeout(1000);
+  await page.locator('[data-tab="library"]').click();
+  await page.locator('.history-link').first().click();
+  assert.equal(await page.locator('#historyDialog').isVisible(),true);
+  await page.locator('#historyDialog button[type="submit"]').click();
   if(errors.length)throw new Error('Errores de la página: '+errors.join(' | '));
   console.log('Prueba visual y funcional en móvil completada: formulario, variantes, IA simulada, editor y biblioteca.');
 }finally{await browser.close();}

@@ -79,6 +79,8 @@ function buildPrompt(p){
     'Strong silhouette and uncluttered negative space. Keep vital objects and faces a minimum 5% from every edge; no frames or fine border at the cutting edge. Do not add printer calibration marks.',
     layout,
     refText,
+    ...(p.refine && Array.isArray(p.refineHistory) ? ['Previous feedback (oldest first): '+p.refineHistory.filter(s=>typeof s==='string').slice(-5).map(s=>s.slice(0,550)).join(' | ')] : []),
+    ...(p.refine ? ['NEW EDIT INSTRUCTIONS (apply these to attached previous design; they take priority): '+String(p.refineInstruction||'').slice(0,1000)] : []),
     `USER CREATIVE BRIEF (primary subject and requested details): ${String(p.description||'').slice(0,3500) || 'Create a simple distinctive icon.'}`,
     'Deliver crisp, front-facing print graphics covering the whole image area, no perspective, no margins outside the artwork, no mockup.',
   ].join('\n');
@@ -98,6 +100,8 @@ export default async function handler(req,res){
     if(typeof p.description!=='string'||p.description.length>3500||typeof p.labelName!=='string'||p.labelName.length>55)return reply(res,400,{error:'Descripción o nombre inválidos.'});
     if(!Array.isArray(p.references)||p.references.length>3)return reply(res,400,{error:'Se admiten hasta tres fotografías.'});
     if(!MODELS.has(p.model)||!QUALITIES.has(p.quality))return reply(res,400,{error:'Modelo o calidad no disponible.'});
+    if(![1,2,4].includes(Number(p.variantCount??1)))return reply(res,400,{error:'Elige 1, 2 o 4 propuestas.'});
+    if(p.refine && (typeof p.refineInstruction!=='string'||!p.refineInstruction.trim()||p.refineInstruction.length>1000))return reply(res,400,{error:'Escribe qué quieres cambiar en el diseño.'});
     if(!['editable','artistic'].includes(p.textMode))return reply(res,400,{error:'Modo de texto inválido.'});
     const shape=p.shape||'rect';
     if(!['rect','round-pair'].includes(shape))return reply(res,400,{error:'Forma de etiqueta no válida'});
@@ -108,7 +112,7 @@ export default async function handler(req,res){
     const images=p.references.map(decodeImageData);
     if(p.refine){if(!p.currentImage)return reply(res,400,{error:'Falta una imagen previa para refinar.'});images.unshift(decodeImageData(p.currentImage));}
     const prompt=buildPrompt(p);
-    const fields={model:p.model,prompt,quality:p.quality,size:shape==='round-pair'?'1024x1024':chooseImageSize(w,h),output_format:'webp',output_compression:85,background:'opaque',n:1};
+    const fields={model:p.model,prompt,quality:p.quality,size:shape==='round-pair'?'1024x1024':chooseImageSize(w,h),output_format:'webp',output_compression:85,background:'opaque',n:p.refine?1:Number(p.variantCount??1)};
     let url='https://api.openai.com/v1/images/generations',options;
     if(images.length){
       url='https://api.openai.com/v1/images/edits';
@@ -125,9 +129,9 @@ export default async function handler(req,res){
       const reason=String(result?.error?.message||result?.error?.code||`HTTP ${r.status}`).slice(0,320);
       return reply(res,r.status===429?429:502,{error:`OpenAI: ${reason}`});
     }
-    const b64=result?.data?.[0]?.b64_json;
-    if(!b64)return reply(res,502,{error:'OpenAI no devolvió una imagen utilizable.'});
-    return reply(res,200,{image:`data:image/webp;base64,${b64}`,modelLabel:p.model==='gpt-image-2.5-sunburst'?'Sunburst':'Flare'});
+    const images=(Array.isArray(result?.data)?result.data:[]).map(item=>item?.b64_json).filter(Boolean).map(b64=>`data:image/webp;base64,${b64}`);
+    if(!images.length)return reply(res,502,{error:'OpenAI no devolvió una imagen utilizable.'});
+    return reply(res,200,{image:images[0],images,count:images.length,modelLabel:p.model==='gpt-image-2.5-sunburst'?'Sunburst':'Flare'});
   }catch(e){
     if(e.name==='TimeoutError')return reply(res,504,{error:'OpenAI ha tardado demasiado en responder. Intenta una calidad inferior.'});
     if(e instanceof SyntaxError)return reply(res,400,{error:'La solicitud no es JSON válido.'});

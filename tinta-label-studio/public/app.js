@@ -11,7 +11,7 @@ const DEFAULTS = {
   designCategory:'Sin categoría',designTags:'',variantCount:1,layers:[],
   artScale:1,artRotation:0,artOffsetX:0,artOffsetY:0,refineHistory:[],
 };
-let state = {...DEFAULTS, references: [], imageData: null, imageElement: null, loadedId: null};
+let state = {...DEFAULTS, references: [], layers: [], refineHistory: [], variants: [], imageData: null, imageElement: null, loadedId: null};
 let dbPromise;
 let generationInProgress = false;
 let toastTimer;
@@ -330,8 +330,8 @@ async function generate(refine=false){
     if(!result.image)throw new Error('OpenAI no devolvió ninguna imagen');
     const images=Array.isArray(result.images)&&result.images.length?result.images:[result.image];
     state.variants=refine?[]:images;
-    renderVariantChoices();
     await setArt(images[0]);
+    renderVariantChoices();
     if(refine){
       state.refineHistory=[...(state.refineHistory||[]),refineInstruction].slice(-8);
       $('refineInstructions').value='';
@@ -516,6 +516,7 @@ async function openDesign(item){
   fillForm();
   if(item.imageData){try{await setArt(item.imageData);}catch{toast('No se pudo cargar la ilustración',true);}}
   generationMessage('Diseño abierto desde tu biblioteca. Al guardar se actualizará esta misma etiqueta.');
+  document.dispatchEvent(new Event('tinta-design-opened'));
   updateTab('create');toast('Etiqueta cargada');
 }
 function newDesign(){
@@ -790,6 +791,9 @@ function initStudioV2(){
     advanced.append(support,finish);layout.append(advanced);
     $('quickFormatsMount').append($('sizeChips'));
     $('quickPrimary').append($('generateButton'));
+    const preferences=document.querySelector('.generation-preferences');
+    $('description').insertAdjacentElement('afterend',preferences);
+    preferences.insertAdjacentElement('afterend',$('quickPrimary'));
     $('advancedToggle').addEventListener('click',()=>{
       advanced.hidden=!advanced.hidden;
       $('advancedToggle').setAttribute('aria-expanded',String(!advanced.hidden));
@@ -820,6 +824,7 @@ function initStudioV2(){
     }
     $('resetArt').addEventListener('click',()=>{state.artScale=1;state.artRotation=0;state.artOffsetX=0;state.artOffsetY=0;syncArt();renderPreview();});
     details.addEventListener('toggle',()=>{if(details.open)syncArt();});
+    document.addEventListener('tinta-design-opened',syncArt);
   }
   $('addLayerText').addEventListener('click',()=>addExtraLayer('text'));
   $('addLayerCircle').addEventListener('click',()=>addExtraLayer('circle'));

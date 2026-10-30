@@ -51,8 +51,10 @@ try{
   await page.locator('.favorite').first().click();
   await page.locator('.favorite.active').first().waitFor();
   await page.locator('#libraryFavorites').check();
+  await page.locator('.library-card').first().waitFor();
   assert.equal(await page.locator('.library-card').count(),1);
   await page.locator('#librarySearch').fill('absolutamente-inexistente');
+  await page.locator('#libraryNoMatches').waitFor({state:'visible'});
   assert.equal(await page.locator('.library-card').count(),0);
   await page.locator('#librarySearch').fill('');
   await page.locator('.library-card').first().waitFor();

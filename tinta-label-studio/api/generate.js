@@ -129,9 +129,9 @@ export default async function handler(req,res){
       const reason=String(result?.error?.message||result?.error?.code||`HTTP ${r.status}`).slice(0,320);
       return reply(res,r.status===429?429:502,{error:`OpenAI: ${reason}`});
     }
-    const images=(Array.isArray(result?.data)?result.data:[]).map(item=>item?.b64_json).filter(Boolean).map(b64=>`data:image/webp;base64,${b64}`);
-    if(!images.length)return reply(res,502,{error:'OpenAI no devolvió una imagen utilizable.'});
-    return reply(res,200,{image:images[0],images,count:images.length,modelLabel:p.model==='gpt-image-2.5-sunburst'?'Sunburst':'Flare'});
+    const generatedImages=(Array.isArray(result?.data)?result.data:[]).map(item=>item?.b64_json).filter(Boolean).map(b64=>`data:image/webp;base64,${b64}`);
+    if(!generatedImages.length)return reply(res,502,{error:'OpenAI no devolvió una imagen utilizable.'});
+    return reply(res,200,{image:generatedImages[0],images:generatedImages,count:generatedImages.length,modelLabel:p.model==='gpt-image-2.5-sunburst'?'Sunburst':'Flare'});
   }catch(e){
     if(e.name==='TimeoutError')return reply(res,504,{error:'OpenAI ha tardado demasiado en responder. Intenta una calidad inferior.'});
     if(e instanceof SyntaxError)return reply(res,400,{error:'La solicitud no es JSON válido.'});

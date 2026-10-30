@@ -445,6 +445,8 @@ function thumbnail(){
 }
 async function saveDesign(){
   readForm();
+  const saveButton=$('saveButton');if(saveButton.disabled)return;
+  saveButton.disabled=true;saveButton.textContent='Guardando…';
   if(!validateSize(state.widthMm,state.heightMm)){toast('Medidas no válidas',true);return;}
   if(state.shape==='round-pair'&&!validCircleDiameter(state.widthMm,state.heightMm,state.circleDiameterMm)){toast('Diámetro de círculo inválido',true);return;}
   try {
@@ -463,7 +465,9 @@ async function saveDesign(){
         ...(priorRecord.versions||[])].slice(0,6):[])
     });
     state.loadedId=id;toast('Etiqueta guardada en tu biblioteca');refreshLibraryCount();
+    if($('libraryPage').classList.contains('active'))await renderLibrary();
   }catch(e){toast(`No se ha guardado: ${e.message}`,true);}
+  finally{saveButton.disabled=false;saveButton.textContent='Guardar diseño';}
 }
 async function refreshLibraryCount(){
   try{$('libraryCount').textContent=(await getRecords()).length;}catch{$('libraryCount').textContent='—';}

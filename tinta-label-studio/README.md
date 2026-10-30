@@ -1,4 +1,23 @@
-# Tinta Studio 1.2 — etiquetas térmicas con OpenAI
+# Tinta Studio 1.3 — etiquetas térmicas con OpenAI
+
+## Novedades de la versión 1.3 (30 de octubre de 2026)
+
+Interfaz reorganizada para iPhone: el formato de papel, el nombre, las instrucciones y **Generar** quedan primero. El acabado y la calibración se abren bajo **Ajustes avanzados**.
+
+- **Propuestas opcionales:** 1 por defecto, o 2 y 4; el coste de la API aumenta con la cantidad.
+- **Refinar con instrucciones:** cambios concretos sobre la ilustración anterior, recordando las indicaciones recientes.
+- **Editor por capas:** textos, círculos, estrellas e imágenes; mover, rotar, escalar, duplicar y reordenar; transformar también la ilustración principal.
+- **Biblioteca:** categorías, palabras clave de búsqueda, filtros, favoritos e historial de hasta seis versiones anteriores.
+- **Enviar a imprimir:** compartir PNG desde iOS cuando esté disponible; no realiza impresión Bluetooth directa en Safari.
+- **Calidad:** pruebas de exportación, servidor, variantes y prueba móvil automatizada con IA simulada.
+
+Compatibilidad de perfiles: NIIMBOT D11-H 300 ppp y D11 203 ppp, rectangulares 30×12 mm, soporte 28×14 mm con dos círculos Ø13 mm estimados (ID 10047).
+
+Dirección de producción: https://tinta-studio-public-git-main-lukiguri.vercel.app/
+
+**Privacidad y límites:** los diseños se guardan localmente y no se sincronizan entre dispositivos. Exporta una copia JSON antes de borrar/reinstalar la PWA. La generación IA real requiere claves configuradas en Vercel y facturación API propia; las pruebas no gastan saldo. Safari en iPhone no ofrece Web Bluetooth nativo: la impresión directa requeriría una app iOS y acceso al protocolo/SDK de NIIMBOT.
+
+---
 
 Aplicación web progresiva (PWA) diseñada para funcionar en iPhone como una app instalada desde Safari, sin pasar por la App Store. La versión inicial **no imprime**: el modelo de impresora es informativo y la salida se exporta como PNG.
 

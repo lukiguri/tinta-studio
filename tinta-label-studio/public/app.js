@@ -440,7 +440,7 @@ async function deleteRecord(id){
 }
 function thumbnail(){
   const c=document.createElement('canvas'),w=600,h=Math.max(60,Math.round(w*state.heightMm/state.widthMm));
-  drawComposition(c,w,h,{});bayerConversion(c,w,h,state.bwMode);
+  const ctx=drawComposition(c,w,h,{});bayerConversion(ctx,w,h,state.bwMode);
   return c.toDataURL('image/jpeg',.8);
 }
 async function saveDesign(){

@@ -125,3 +125,61 @@
  .dialog-heading h2{font-size:17px}
  .history-version img{width:82px}
 }
+
+
+/* v1.4 · Desplegable real debajo del control (también en Safari iPhone) */
+.advanced-details{margin-top:14px}
+.advanced-details>.advanced-toggle{list-style:none;cursor:pointer;user-select:none;margin:0}
+.advanced-details>.advanced-toggle::-webkit-details-marker{display:none}
+.advanced-details>.advanced-toggle::marker{content:""}
+.advanced-details[open]>.advanced-toggle{border-color:#f5ab87;background:#fff8f3;color:#8f4629}
+.advanced-details[open] .advanced-chevron{transform:rotate(180deg)}
+.advanced-chevron{transition:transform .18s ease}
+.advanced-details .advanced-sections{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:14px;grid-row:auto;grid-column:auto}
+.advanced-details .advanced-sections>.panel{padding:18px;border:1px solid #e5e9e6;background:#fcfcfb;box-shadow:none;border-radius:13px;min-width:0}
+.advanced-details .advanced-sections .panel-title{margin-bottom:14px}
+.advanced-details .advanced-sections .panel-title h2{font-size:17px}
+.advanced-details .advanced-sections .field-label{margin-top:13px}
+.advanced-details .advanced-sections .small-actions{flex-wrap:wrap}
+.advanced-details .advanced-sections .size-chips{display:none}
+.recent-quick-button{display:flex;align-items:center;justify-content:center;gap:7px;margin:12px 0;width:100%;background:#f1f6f3;color:#2d6450;border:1px solid #d9e8df;border-radius:10px;min-height:42px;padding:10px;font-size:12px;font-weight:800}
+.recent-quick-button:hover,.recent-quick-button:focus-visible{background:#e6f0e9}
+
+/* Historial de propuestas temporal, separado de etiquetas guardadas */
+.temporary-panel{border:1px solid #dce7df;background:#f7faf7;padding:22px;border-radius:17px;margin:0 0 28px}
+.temporary-heading{display:flex;gap:16px;align-items:flex-start;justify-content:space-between;margin:0 0 14px}
+.temporary-heading h3{font-size:clamp(18px,2.5vw,25px);margin:2px 0 8px;letter-spacing:-.025em;display:flex;gap:9px;align-items:center}
+.temporary-heading p:not(.eyebrow){font-size:12px;color:#71827a;line-height:1.6;margin:0;max-width:710px}
+.temporary-heading #clearTemporary{color:#617469;border-color:#dae5dd;min-height:39px;font-size:11px;flex-shrink:0}
+.temporary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.temporary-card{min-width:0;display:flex;flex-direction:column;border:1px solid #dfe8df;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 6px 17px #131e2910}
+.temporary-card>img{width:100%;height:134px;object-fit:contain;background:#eef3f0;display:block;padding:8px}
+.temporary-card-body{padding:12px;display:flex;flex-direction:column;flex:1;min-width:0}
+.temporary-card-body>strong{font-size:12px;line-height:1.4;color:#23342c;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.temporary-card-body>p{font-size:10px;color:#788a7e;margin:6px 0 12px}
+.temporary-actions{margin-top:auto;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.temporary-actions button{min-width:0;min-height:35px;padding:8px 5px;background:#f5f7f4;border:1px solid #e0e7df;border-radius:8px;color:#526358;font-size:10px;font-weight:800;line-height:1.25}
+.temporary-actions button.temporary-permanent{grid-column:1/-1;background:#e9f6eb;color:#2e6847;border-color:#d1ead8}
+.temporary-actions button.temporary-remove{color:#ac6c62;background:#fff9f7}
+.temporary-empty{font-size:12px;color:#7f9185;line-height:1.6;margin:8px 0 0;background:white;border:1px dashed #d0dfd4;padding:20px;border-radius:12px;text-align:center}
+#temporaryEmpty[hidden]{display:none!important}
+.permanent-heading{font-size:20px;letter-spacing:-.025em;margin:8px 0 16px}
+@media(max-width:920px){
+  .temporary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:600px){
+  .advanced-details .advanced-sections>.panel{padding:15px}
+  .temporary-panel{padding:15px;margin-bottom:20px}
+  .temporary-heading{flex-wrap:wrap}
+  .temporary-heading #clearTemporary{margin-top:0}
+  .temporary-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .temporary-card>img{height:112px}
+  .temporary-card-body{padding:9px}
+  .temporary-actions{grid-template-columns:1fr}
+  .temporary-actions button.temporary-permanent{grid-column:1}
+}
+@media(max-width:360px){
+  .temporary-grid{grid-template-columns:1fr}
+  .temporary-actions{grid-template-columns:1fr 1fr}
+  .temporary-actions button.temporary-permanent{grid-column:1/-1}
+}

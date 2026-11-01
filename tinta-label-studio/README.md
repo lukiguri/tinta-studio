@@ -1,4 +1,15 @@
-# Tinta Studio 1.3 — etiquetas térmicas con OpenAI
+# Tinta Studio 1.4 — etiquetas térmicas con OpenAI
+
+## Cambios 1.4 — historial temporal y ajustes desplegables
+
+- **Historial temporal automático:** cada imagen generada, incluidas las 2 o 4 variantes opcionales y cada refinamiento, se guarda en IndexedDB local durante **7 días**, hasta un máximo de 60 propuestas. Se eliminan al abrir la app o Biblioteca cuando caducan o si se supera el máximo.
+- **Guardar permanentemente:** Biblioteca → Generadas recientemente → Guardar para siempre. Crea un registro propio en la biblioteca permanente y elimina su copia temporal. También puedes recuperar una propuesta para editarla o borrarla manualmente.
+- **Ajustes avanzados:** ahora son un desplegable HTML nativo bajo el botón de Crear. Antes los controles se colocaban después de toda la vista previa, fuera de la zona visible en el móvil.
+- Los diseños que ya existían se conservan al actualizar la base de datos a la versión 2.
+- **Limitación:** todo está guardado en el propio dispositivo. iOS puede eliminar datos de un sitio bajo ciertas condiciones o si borras la app; para proteger los diseños permanentes utiliza la copia de seguridad de Biblioteca. Las temporales no se sincronizan ni se incluyen en la copia JSON. El límite es **7 días o las 60 propuestas más recientes**, lo que ocurra primero.
+- Las generaciones temporales **no activan peticiones adicionales** a OpenAI y no tienen coste extra: solo guardan localmente los resultados de las peticiones que ya realizaste.
+
+---
 
 ## Novedades de la versión 1.3 (30 de octubre de 2026)
 

@@ -26,3 +26,11 @@ La versión 1.0 NO promete ninguna de estas funciones futuras.
 Realizado: UI móvil reorganizada, variantes opcionales, refinamiento iterativo, capas, favoritos/categorías/buscador, historial de versiones y compartir PNG.
 
 Pendiente: impresión Bluetooth nativa iOS, sincronización entre dispositivos, calibración física NIIMBOT y prueba de generación con cuenta API real.
+
+## Actualización 1.4
+
+- [x] Historial temporal de generación de IA (incluye variantes y refinamientos).
+- [x] Retención local 7 días, límite de 60 y limpieza de expiradas.
+- [x] Acciones: recuperar/editar, guardar permanentemente, borrar una o vaciar todas.
+- [x] Desplegable avanzado nativo que abre los ajustes inmediatamente debajo del control, también en iPhone.
+- [ ] Sincronizar diseños entre dispositivos (requiere backend y autenticación).

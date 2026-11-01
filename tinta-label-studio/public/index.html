@@ -21,7 +21,7 @@
         <span class="brand-icon" aria-hidden="true"><svg viewBox="0 0 36 36" fill="none"><rect x="3" y="6" width="30" height="24" rx="7" stroke="currentColor" stroke-width="2.4"/><path d="M11 13h14M11 18h10M11 23h6" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="26" cy="23" r="2" fill="currentColor"/></svg></span>
         <span class="brand-name">tinta<span class="brand-dot">.</span></span>
       </div>
-      <span class="top-chip"><span class="tiny-dot"></span> ESTUDIO DE ETIQUETAS <span class="version">v1.3</span></span>
+      <span class="top-chip"><span class="tiny-dot"></span> ESTUDIO DE ETIQUETAS <span class="version">v1.4</span></span>
     </header>
 
     <main>
@@ -40,6 +40,50 @@
         <div class="studio-layout">
           <div class="builder">
             <section class="panel">
+              <header class="panel-title"><span class="step">01</span><div><h2>Tu idea</h2><p>Empieza aquí: texto, formato y dibujo</p></div></header>
+              <div id="quickFormat" class="quick-format"><span class="field-label">Elige el papel</span><div id="quickFormatsMount"></div></div>
+              <label class="field-label" for="labelName">Texto principal / nombre</label>
+              <input id="labelName" class="field" maxlength="55" value="POL" placeholder="Ej. POL, MILO, FRAN…">
+              <label class="field-label" for="description">Describe la ilustración <span class="required">*</span></label>
+              <textarea id="description" class="field" rows="4" maxlength="3500" placeholder="Ej. Caricatura de un chico en pose divertida, con un gato a su lado y un AirTag…">Un personaje en pose desenfadada junto a un gato y un pequeño AirTag. Estilo ilustración adorable y expresiva, con líneas contundentes.</textarea>
+              <label class="field-label" for="style">Estilo gráfico</label>
+              <select id="style" class="field">
+                <option value="comic" selected>Cómic con contorno grueso</option>
+                <option value="manga">Manga / anime</option>
+                <option value="chibi">Chibi / kawaii</option>
+                <option value="minimal">Minimalista de alto contraste</option>
+                <option value="retro">Retro / tatuaje old-school</option>
+                <option value="engraving">Grabado / xilografía simplificada</option>
+                <option value="typographic">Tipografía protagonista</option>
+                <option value="custom">Personalizado según descripción</option>
+              </select>
+              <div id="roundTextSettings" hidden>
+                <label class="field-label" for="pairTextMode">Texto de los dos círculos</label>
+                <select id="pairTextMode" class="field">
+                  <option value="duplicate">Repetir el mismo nombre en ambos</option>
+                  <option value="alternate">Poner un nombre distinto en el segundo</option>
+                </select>
+                <label id="secondTextField" class="input-label" hidden>Nombre del segundo círculo
+                  <input id="secondLabelName" class="field" maxlength="55" placeholder="Ej. SARA">
+                </label>
+                <p id="secondTextHint" class="helper" hidden>Para tener nombres diferentes, utiliza el modo de texto exacto editable.</p>
+              </div>
+              <label class="field-label">¿Cómo quieres el nombre?</label>
+              <div class="radio-cards" role="radiogroup" aria-label="Modo del texto">
+                <label class="radio-card"><input type="radio" name="textMode" value="editable" checked><span><strong>Texto exacto y editable</strong><small>Lo coloca la app; se puede mover.</small></span></label>
+                <label class="radio-card"><input type="radio" name="textMode" value="artistic"><span><strong>Letra artística de la IA</strong><small>Integrada en el dibujo; podría fallar.</small></span></label>
+              </div>
+              <div class="upload-head"><label class="field-label" for="referenceFiles">Fotos o dibujos de referencia <span class="muted">(hasta 3)</span></label><span id="referenceCounter" class="muted">0/3</span></div>
+              <label class="upload-zone" for="referenceFiles"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="2"/><path d="m3 17 5-5 4 4 3-3 6 6"/></svg><span><strong>Añadir imágenes</strong><small>De Fotos o Archivos del iPhone</small></span><input id="referenceFiles" type="file" accept="image/*" multiple hidden></label>
+              <div id="referenceGrid" class="references" aria-label="Referencias añadidas"></div>
+              <div class="generation-preferences"><label for="variantCount" class="input-label">¿Cuántas propuestas quieres?
+                <select id="variantCount" class="field"><option value="1" selected>1 diseño · por defecto</option><option value="2">2 alternativas</option><option value="4">4 alternativas</option></select>
+              </label><small>Las propuestas múltiples son opcionales y aumentan el coste de la API.</small></div>
+              <div id="quickPrimary" class="quick-primary"></div>
+              <details id="advancedDetails" class="advanced-details">
+                <summary id="advancedToggle" class="advanced-toggle">⚙ Ajustes avanzados de papel, acabado y tipografía <span class="advanced-chevron" aria-hidden="true">⌄</span></summary>
+                <div id="advancedSections" class="advanced-sections">
+                  <section class="panel">
               <header class="panel-title"><span class="step">02</span><div><h2>El soporte</h2><p>Medidas físicas de la etiqueta</p></div></header>
               <label class="field-label" for="printer">Modelo de impresora <span class="muted">(informativo)</span></label>
               <select id="printer" class="field">
@@ -86,52 +130,7 @@
               </div>
               <div class="small-actions"><button id="rotateButton" type="button" class="subtle-button"><svg viewBox="0 0 24 24"><path d="M4 7a8 8 0 0 1 15-1M20 17a8 8 0 0 1-15 1M20 3v5h-5M4 21v-5h5"/></svg> Girar etiqueta</button><span id="sizePixels" class="muted size-info">354 × 142 px · 300 ppp</span></div>
             </section>
-
-            <section class="panel">
-              <header class="panel-title"><span class="step">01</span><div><h2>Tu idea</h2><p>Empieza aquí: texto, formato y dibujo</p></div></header>
-              <div id="quickFormat" class="quick-format"><span class="field-label">Elige el papel</span><div id="quickFormatsMount"></div></div>
-              <label class="field-label" for="labelName">Texto principal / nombre</label>
-              <input id="labelName" class="field" maxlength="55" value="POL" placeholder="Ej. POL, MILO, FRAN…">
-              <label class="field-label" for="description">Describe la ilustración <span class="required">*</span></label>
-              <textarea id="description" class="field" rows="4" maxlength="3500" placeholder="Ej. Caricatura de un chico en pose divertida, con un gato a su lado y un AirTag…">Un personaje en pose desenfadada junto a un gato y un pequeño AirTag. Estilo ilustración adorable y expresiva, con líneas contundentes.</textarea>
-              <label class="field-label" for="style">Estilo gráfico</label>
-              <select id="style" class="field">
-                <option value="comic" selected>Cómic con contorno grueso</option>
-                <option value="manga">Manga / anime</option>
-                <option value="chibi">Chibi / kawaii</option>
-                <option value="minimal">Minimalista de alto contraste</option>
-                <option value="retro">Retro / tatuaje old-school</option>
-                <option value="engraving">Grabado / xilografía simplificada</option>
-                <option value="typographic">Tipografía protagonista</option>
-                <option value="custom">Personalizado según descripción</option>
-              </select>
-              <div id="roundTextSettings" hidden>
-                <label class="field-label" for="pairTextMode">Texto de los dos círculos</label>
-                <select id="pairTextMode" class="field">
-                  <option value="duplicate">Repetir el mismo nombre en ambos</option>
-                  <option value="alternate">Poner un nombre distinto en el segundo</option>
-                </select>
-                <label id="secondTextField" class="input-label" hidden>Nombre del segundo círculo
-                  <input id="secondLabelName" class="field" maxlength="55" placeholder="Ej. SARA">
-                </label>
-                <p id="secondTextHint" class="helper" hidden>Para tener nombres diferentes, utiliza el modo de texto exacto editable.</p>
-              </div>
-              <label class="field-label">¿Cómo quieres el nombre?</label>
-              <div class="radio-cards" role="radiogroup" aria-label="Modo del texto">
-                <label class="radio-card"><input type="radio" name="textMode" value="editable" checked><span><strong>Texto exacto y editable</strong><small>Lo coloca la app; se puede mover.</small></span></label>
-                <label class="radio-card"><input type="radio" name="textMode" value="artistic"><span><strong>Letra artística de la IA</strong><small>Integrada en el dibujo; podría fallar.</small></span></label>
-              </div>
-              <div class="upload-head"><label class="field-label" for="referenceFiles">Fotos o dibujos de referencia <span class="muted">(hasta 3)</span></label><span id="referenceCounter" class="muted">0/3</span></div>
-              <label class="upload-zone" for="referenceFiles"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="2"/><path d="m3 17 5-5 4 4 3-3 6 6"/></svg><span><strong>Añadir imágenes</strong><small>De Fotos o Archivos del iPhone</small></span><input id="referenceFiles" type="file" accept="image/*" multiple hidden></label>
-              <div id="referenceGrid" class="references" aria-label="Referencias añadidas"></div>
-              <div class="generation-preferences"><label for="variantCount" class="input-label">¿Cuántas propuestas quieres?
-                <select id="variantCount" class="field"><option value="1" selected>1 diseño · por defecto</option><option value="2">2 alternativas</option><option value="4">4 alternativas</option></select>
-              </label><small>Las propuestas múltiples son opcionales y aumentan el coste de la API.</small></div>
-              <div id="quickPrimary" class="quick-primary"></div>
-              <button id="advancedToggle" class="advanced-toggle" type="button" aria-controls="advancedSections" aria-expanded="false">⚙ Ajustes avanzados de papel, acabado y tipografía <span aria-hidden="true">⌄</span></button>
-            </section>
-
-            <section class="panel">
+                  <section class="panel">
               <header class="panel-title"><span class="step">03</span><div><h2>El acabado</h2><p>Preparado para papel térmico</p></div></header>
               <div class="form-grid two">
                 <label class="input-label">Motor de imagen
@@ -161,6 +160,10 @@
                 <p class="helper">Arrastra el nombre sobre la vista previa para colocarlo.</p>
               </div>
             </section>
+                </div>
+              </details>
+            </section>
+
           </div>
 
           <aside class="preview-column">
@@ -183,6 +186,7 @@
                 <button id="refineButton" type="button" class="outline-button" disabled><svg viewBox="0 0 24 24"><path d="M12 4a8 8 0 1 0 8 8M12 1v6h6"/></svg> Aplicar cambio con IA</button>
               </div>
               <div id="variantGallery" class="variant-gallery" hidden><strong>Elige tu propuesta</strong><div id="variantChoices" class="variant-choices"></div></div>
+               <button id="openRecentButton" class="recent-quick-button" type="button">⌛ Ver diseños generados recientemente <span id="recentCountInline">0</span></button>
               <div id="generationMessage" class="generation-message" role="status" aria-live="polite">Puedes componer y guardar una etiqueta solo con texto, sin gastar ninguna generación.</div>
               <div class="thin-rule"></div>
               <section class="layer-editor">
@@ -224,6 +228,17 @@
 
       <section id="libraryPage" class="page" aria-label="Biblioteca de etiquetas" hidden>
         <div class="library-heading"><div><p class="eyebrow">TODO EN SU SITIO</p><h2>Mis etiquetas</h2><p>Guarda diseños, vuelve a editarlos y descarga de nuevo.</p></div><button id="newDesign" class="outline-button" type="button">+ Nueva etiqueta</button></div>
+        <section class="temporary-panel" aria-labelledby="temporaryTitle">
+          <div class="temporary-heading">
+            <div><p class="eyebrow">POR SI CAMBIAS DE OPINIÓN</p><h3 id="temporaryTitle">Generadas recientemente <span id="temporaryCount" class="count-pill">0</span></h3>
+              <p>Guardamos automáticamente todas las propuestas durante <strong>7 días</strong> en este dispositivo. Puedes recuperarlas o guardarlas para siempre. Máximo 60 propuestas temporales; las más antiguas se eliminan primero.</p>
+            </div>
+            <button id="clearTemporary" type="button" class="outline-button">Vaciar temporales</button>
+          </div>
+          <div id="temporaryGrid" class="temporary-grid" aria-live="polite"></div>
+          <p id="temporaryEmpty" class="temporary-empty">Las etiquetas que generes con IA aparecerán aquí automáticamente.</p>
+        </section>
+        <h3 class="permanent-heading">Mis etiquetas permanentes</h3>
         <div class="library-filters">
           <input id="librarySearch" class="field" type="search" placeholder="Buscar etiquetas, nombres o detalles…" aria-label="Buscar en biblioteca">
           <select id="libraryCategory" class="field" aria-label="Filtrar categoría"><option value="">Todas las categorías</option><option value="Personas">Personas</option><option value="Mascotas">Mascotas</option><option value="Regalos">Regalos</option><option value="Trabajo">Trabajo</option><option value="Otros">Otros</option><option value="Sin categoría">Sin categoría</option></select>

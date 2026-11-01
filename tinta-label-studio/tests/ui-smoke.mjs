@@ -22,6 +22,13 @@ try{
   assert.equal(await page.locator('#advancedSections').isVisible(),false);
   await page.locator('#advancedToggle').click();
   assert.equal(await page.locator('#advancedSections').isVisible(),true);
+  assert.equal(await page.locator('#advancedDetails').getAttribute('open'),'');
+  const summaryRect=await page.locator('#advancedToggle').boundingBox();
+  const advancedRect=await page.locator('#advancedSections').boundingBox();
+  assert(advancedRect.y-summaryRect.y<100,'Los ajustes deben abrirse junto al botón, no debajo del lienzo');
+  await page.locator('#advancedToggle').click();
+  assert.equal(await page.locator('#advancedSections').isVisible(),false);
+
 
   await page.locator('#variantCount').selectOption('4');
   await page.evaluate(()=>sessionStorage.setItem('tinta-password','test'));
@@ -66,6 +73,54 @@ try{
   await page.locator('.history-link').first().click();
   assert.equal(await page.locator('#historyDialog').isVisible(),true);
   await page.locator('#historyDialog button[type="submit"]').click();
+  await page.locator('#libraryFavorites').uncheck();
+
+  // Cada una de las 4 variantes y el refinamiento deben persistir localmente.
+  await page.locator('#temporaryCount').waitFor({state:'visible'});
+  await page.waitForFunction(()=>document.querySelector('#temporaryCount').textContent==='5');
+  assert.equal(await page.locator('.temporary-card').count(),5);
+  assert.equal(await page.locator('.temporary-permanent').count(),5);
+
+  // Guardar una propuesta permanente la mueve de Temporal a Biblioteca.
+  await page.locator('.temporary-permanent').first().click();
+  await page.waitForFunction(()=>document.querySelector('#temporaryCount').textContent==='4');
+  assert.equal(await page.locator('.temporary-card').count(),4);
+  assert.equal(await page.locator('.library-card').count(),2);
+
+  // La actualización y el cierre no borran las propuestas recientes.
+  await page.reload({waitUntil:'networkidle'});
+  await page.locator('[data-tab="library"]').click();
+  await page.waitForFunction(()=>document.querySelector('#temporaryCount').textContent==='4');
+  assert.equal(await page.locator('.temporary-card').count(),4);
+
+  // Una propuesta antigua debe desaparecer al abrir la biblioteca.
+  await page.evaluate(async()=>{
+    const db=await new Promise((resolve,reject)=>{
+      const req=indexedDB.open('tintaStudioDB',2);
+      req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+    });
+    const list=await new Promise((resolve,reject)=>{
+      const req=db.transaction('tempGenerations','readonly').objectStore('tempGenerations').getAll();
+      req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+    });
+    const item=list[0];item.expiresAt=Date.now()-1000;
+    await new Promise((resolve,reject)=>{
+      const tx=db.transaction('tempGenerations','readwrite');
+      tx.objectStore('tempGenerations').put(item);
+      tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);
+    });
+    db.close();
+  });
+  await page.locator('[data-tab="create"]').click();
+  await page.locator('#openRecentButton').click();
+  await page.waitForFunction(()=>document.querySelector('#temporaryCount').textContent==='3');
+  assert.equal(await page.locator('.temporary-card').count(),3);
+
+  // Borrar las temporales no debe tocar las etiquetas permanentes.
+  page.once('dialog',dialog=>dialog.accept());
+  await page.locator('#clearTemporary').click();
+  await page.waitForFunction(()=>document.querySelector('#temporaryCount').textContent==='0');
+  assert.equal(await page.locator('.library-card').count(),2);
   if(errors.length)throw new Error('Errores de la página: '+errors.join(' | '));
-  console.log('Prueba visual y funcional en móvil completada: formulario, variantes, IA simulada, editor y biblioteca.');
+  console.log('Prueba móvil completada: ajustes desplegables, generación múltiple, historial temporal y etiquetas permanentes.');
 }finally{await browser.close();}

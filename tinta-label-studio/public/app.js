@@ -408,14 +408,175 @@ function database(){
   if(!dbPromise){
     dbPromise=new Promise((resolve,reject)=>{
       if(!window.indexedDB){reject(new Error('Este navegador no permite guardar la biblioteca'));return;}
-      const req=indexedDB.open('tintaStudioDB',1);
-      req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains('labels'))req.result.createObjectStore('labels',{keyPath:'id'});};
+      const req=indexedDB.open('tintaStudioDB',2);
+      req.onupgradeneeded=()=>{
+        if(!req.result.objectStoreNames.contains('labels'))req.result.createObjectStore('labels',{keyPath:'id'});
+        if(!req.result.objectStoreNames.contains('tempGenerations'))req.result.createObjectStore('tempGenerations',{keyPath:'id'});
+      };
       req.onsuccess=()=>resolve(req.result);
       req.onerror=()=>reject(req.error);
     });
   }
   return dbPromise;
 }
+
+// Las propuestas de IA se guardan temporalmente en este iPhone, sin subirlas a servidores.
+// No son la biblioteca permanente; se eliminan a los 7 días o al superar 60 imágenes.
+const TEMP_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
+const TEMP_MAX_ITEMS = 60;
+let temporaryRenderVersion = 0;
+async function readTemporaryRecords(){
+  const db=await database();
+  return new Promise((resolve,reject)=>{
+    const req=db.transaction('tempGenerations','readonly').objectStore('tempGenerations').getAll();
+    req.onsuccess=()=>resolve(req.result.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)));
+    req.onerror=()=>reject(req.error||new Error('No se pudo leer el historial temporal'));
+  });
+}
+async function writeTemporaryRecord(record){
+  const db=await database();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction('tempGenerations','readwrite');
+    tx.objectStore('tempGenerations').put(record);
+    tx.oncomplete=resolve;
+    tx.onerror=()=>reject(tx.error||new Error('No se pudo guardar el diseño temporal'));
+    tx.onabort=()=>reject(tx.error||new Error('El almacenamiento local no tiene espacio suficiente'));
+  });
+}
+async function eraseTemporaryIds(ids){
+  if(!ids.length)return;
+  const db=await database();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction('tempGenerations','readwrite');
+    const store=tx.objectStore('tempGenerations');
+    for(const id of ids)store.delete(id);
+    tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error('No se pudieron borrar los temporales'));
+  });
+}
+async function cleanTemporaryHistory(){
+  const items=await readTemporaryRecords();
+  const now=Date.now();
+  const expired=items.filter(r=>!Number.isFinite(r.expiresAt)||r.expiresAt<=now);
+  const valid=items.filter(r=>Number.isFinite(r.expiresAt)&&r.expiresAt>now);
+  const excess=valid.slice(TEMP_MAX_ITEMS);
+  const toRemove=[...new Set([...expired,...excess].map(r=>r.id))];
+  if(toRemove.length)await eraseTemporaryIds(toRemove);
+  return valid.slice(0,TEMP_MAX_ITEMS);
+}
+function temporaryProperties(){
+  return Object.fromEntries(Object.keys(DEFAULTS).map(key=>[key,state[key]]));
+}
+async function temporaryThumbnail(imageData){
+  const img=await imageFromData(imageData);
+  const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
+  const width=220,height=160;
+  canvas.width=width;canvas.height=height;ctx.fillStyle='#fff';ctx.fillRect(0,0,width,height);
+  const scale=Math.min(width/img.naturalWidth,height/img.naturalHeight);
+  const w=img.naturalWidth*scale,h=img.naturalHeight*scale;
+  ctx.drawImage(img,(width-w)/2,(height-h)/2,w,h);
+  return canvas.toDataURL('image/jpeg',.76);
+}
+async function autoSaveGenerations(images,reason='generate'){
+  if(!Array.isArray(images)||!images.length)return 0;
+  let saved=0;
+  const props=temporaryProperties();
+  const title=String(state.designTitle||state.labelName||'Etiqueta').trim()||'Etiqueta';
+  let existing;
+  try{existing=await cleanTemporaryHistory();}
+  catch(e){console.warn('Historial temporal no disponible:',e?.message);return 0;}
+  for(let i=0;i<images.length;i++){
+    const imageData=images[i];
+    if(typeof imageData!=='string'||!/^data:image\/(webp|jpeg|png);base64,/i.test(imageData))continue;
+    const now=Date.now();
+    const item={
+      id:crypto.randomUUID(),createdAt:now,expiresAt:now+TEMP_LIFETIME_MS,
+      title:title+(images.length>1?' · propuesta '+(i+1):''),
+      kind:reason,properties:props,textX:state.textX,textY:state.textY,
+      imageData,thumbnail:'',
+    };
+    try{
+      item.thumbnail=await temporaryThumbnail(imageData);
+      await writeTemporaryRecord(item);
+      saved++;
+    }catch(e){console.warn('No se pudo guardar una generación temporal:',e?.message);}
+  }
+  try{await cleanTemporaryHistory();await refreshTemporaryCount();}
+  catch(e){console.warn('No se pudo actualizar la lista temporal:',e?.message);}
+  return saved;
+}
+async function refreshTemporaryCount(){
+  try{
+    const count=(await cleanTemporaryHistory()).length;
+    if($('temporaryCount'))$('temporaryCount').textContent=String(count);
+    if($('recentCountInline'))$('recentCountInline').textContent=count?'('+count+')':'';
+  }catch(e){
+    if($('temporaryCount'))$('temporaryCount').textContent='—';
+  }
+}
+async function deleteTemporaryGeneration(id){
+  await eraseTemporaryIds([id]);
+  await renderTemporaryHistory();
+}
+async function permanentFromTemporary(item){
+  if(!item?.imageData)return;
+  const saved={
+    id:crypto.randomUUID(),updatedAt:new Date().toISOString(),
+    title:String(item.title||'Etiqueta recuperada').slice(0,70),
+    properties:{...DEFAULTS,...(item.properties||{})},
+    textX:item.textX??.76,textY:item.textY??.53,
+    imageData:item.imageData,thumbnail:item.thumbnail||'',
+    references:[],variants:[],favorite:false,versions:[]
+  };
+  await saveRecord(saved);
+  await eraseTemporaryIds([item.id]);
+  await refreshLibraryCount();
+  await renderTemporaryHistory();
+  await renderLibrary();
+  toast('Etiqueta guardada para siempre en tu biblioteca');
+}
+async function editTemporaryGeneration(item){
+  await openDesign({...item,id:null,references:[],variants:[],versions:[]});
+  generationMessage('Propuesta temporal recuperada. Guarda el diseño en la biblioteca para conservarlo permanentemente.');
+}
+async function renderTemporaryHistory(){
+  const current=++temporaryRenderVersion,root=$('temporaryGrid');
+  if(!root)return;
+  try{
+    const items=await cleanTemporaryHistory();
+    if(current!==temporaryRenderVersion)return;
+    root.replaceChildren();
+    $('temporaryCount').textContent=String(items.length);
+    $('recentCountInline').textContent=items.length?'('+items.length+')':'';
+    $('temporaryEmpty').hidden=items.length>0;
+    $('clearTemporary').disabled=items.length===0;
+    for(const item of items){
+      const card=document.createElement('article');card.className='temporary-card';
+      const image=document.createElement('img');image.src=item.thumbnail||item.imageData;image.alt='Propuesta: '+item.title;image.loading='lazy';
+      const box=document.createElement('div');box.className='temporary-card-body';
+      const name=document.createElement('strong');name.textContent=item.title;
+      const meta=document.createElement('p');
+      const days=Math.max(1,Math.ceil((item.expiresAt-Date.now())/(24*60*60*1000)));
+      meta.textContent=(item.kind==='refine'?'Refinada':'Generada')+' · quedan '+days+' día'+(days===1?'':'s');
+      const actions=document.createElement('div');actions.className='temporary-actions';
+      const permanent=document.createElement('button');permanent.type='button';permanent.className='temporary-permanent';permanent.textContent='★ Guardar para siempre';
+      permanent.addEventListener('click',async()=>{
+        permanent.disabled=true;permanent.textContent='Guardando…';
+        try{await permanentFromTemporary(item);}catch(e){toast('No se ha podido guardar: '+e.message,true);permanent.disabled=false;permanent.textContent='★ Guardar para siempre';}
+      });
+      const edit=document.createElement('button');edit.type='button';edit.textContent='Editar';
+      edit.addEventListener('click',async()=>{try{await editTemporaryGeneration(item);}catch(e){toast('No se pudo recuperar: '+e.message,true);}});
+      const remove=document.createElement('button');remove.type='button';remove.className='temporary-remove';remove.textContent='Borrar';remove.title='Eliminar únicamente esta propuesta temporal';
+      remove.addEventListener('click',async()=>{try{await deleteTemporaryGeneration(item.id);}catch(e){toast('No se pudo borrar: '+e.message,true);}});
+      actions.append(permanent,edit,remove);box.append(name,meta,actions);card.append(image,box);root.append(card);
+    }
+  }catch(e){root.textContent='No se pudo abrir el historial temporal: '+e.message;}
+}
+async function clearTemporaryHistory(){
+  if(!confirm('¿Eliminar todas las propuestas temporales? Las etiquetas guardadas permanentemente no se borrarán.'))return;
+  try{const items=await readTemporaryRecords();await eraseTemporaryIds(items.map(r=>r.id));await renderTemporaryHistory();toast('Historial temporal vaciado');}
+  catch(e){toast('No se pudo vaciar el historial: '+e.message,true);}
+}
+
 async function saveRecord(data){
   const db=await database();
   return new Promise((resolve,reject)=>{

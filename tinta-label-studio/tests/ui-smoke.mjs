@@ -73,6 +73,7 @@ try{
   await page.locator('.history-link').first().click();
   assert.equal(await page.locator('#historyDialog').isVisible(),true);
   await page.locator('#historyDialog button[type="submit"]').click();
+  await page.locator('#libraryFavorites').uncheck();
 
   // Cada una de las 4 variantes y el refinamiento deben persistir localmente.
   await page.locator('#temporaryCount').waitFor({state:'visible'});

@@ -68,7 +68,7 @@ function updateTab(which) {
     el.hidden=!active; el.classList.toggle('active',active);
   });
   window.scrollTo({top:0,behavior:'smooth'});
-  if (which==='library') renderLibrary();
+  if (which==='library'){renderLibrary();renderTemporaryHistory();}
   if (which==='settings') checkConnection();
 }
 function readForm() {
@@ -337,7 +337,11 @@ async function generate(refine=false){
       $('refineInstructions').value='';
       renderRefineHistory();
     }else{state.refineHistory=[];renderRefineHistory();}
-    generationMessage(`¡Diseño listo! Creado con ${result.modelLabel||'OpenAI'}. Puedes mover el texto, guardarlo o exportarlo.`, 'success');
+    const savedTemporarily=await autoSaveGenerations(images,refine?'refine':'generate');
+    const tempInfo=savedTemporarily===images.length
+      ? ' Las propuestas están guardadas temporalmente durante 7 días en Biblioteca.'
+      : ' Aviso: algunas propuestas no se han guardado automáticamente. Revisa el almacenamiento del dispositivo.';
+    generationMessage(`¡Diseño listo! Creado con ${result.modelLabel||'OpenAI'}.`+tempInfo, 'success');
     toast('¡Etiqueta creada!');
   }catch(e){generationMessage(e.message,'error');toast('No se pudo generar la imagen',true);}
   finally{setGenerationBusy(false);renderPreview();}
@@ -792,6 +796,11 @@ function wire(){
   $('newDesign').addEventListener('click',newDesign);
   $('emptyCreate').addEventListener('click',newDesign);
   $('backupExport').addEventListener('click',exportBackup);
+  $('openRecentButton').addEventListener('click',()=>{
+    updateTab('library');
+    $('temporaryTitle').scrollIntoView({behavior:'smooth',block:'start'});
+  });
+  $('clearTemporary').addEventListener('click',clearTemporaryHistory);
   $('backupInput').addEventListener('change',e=>{if(e.target.files?.[0])importBackup(e.target.files[0]);});
   $('appPassword').value=getPassword();
   try{$('rememberPassword').checked=!!localStorage.getItem('tinta-password');}catch{$('rememberPassword').checked=false;}
@@ -800,7 +809,7 @@ function wire(){
   setupDragText();
   initStudioV2();
 }
-wire();renderPreview();refreshLibraryCount();
+wire();renderPreview();refreshLibraryCount();refreshTemporaryCount();
 if('serviceWorker' in navigator&&location.protocol==='https:')window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
 
 
@@ -950,25 +959,13 @@ async function sharePNGForPrint(){
   }catch(e){toast(e.message,true);}
 }
 function initStudioV2(){
-  const layout=document.querySelector('.studio-layout');
-  const builder=layout?.querySelector('.builder');
-  const panels=builder?[...builder.children].filter(el=>el.classList.contains('panel')):[];
-  if(panels.length>=3){
-    const [support,idea,finish]=panels;
-    builder.insertBefore(idea,support);
-    const advanced=document.createElement('div');advanced.id='advancedSections';advanced.className='advanced-sections';advanced.hidden=true;
-    advanced.append(support,finish);layout.append(advanced);
-    $('quickFormatsMount').append($('sizeChips'));
-    $('quickPrimary').append($('generateButton'));
-    const preferences=document.querySelector('.generation-preferences');
-    $('description').insertAdjacentElement('afterend',preferences);
-    preferences.insertAdjacentElement('afterend',$('quickPrimary'));
-    $('advancedToggle').addEventListener('click',()=>{
-      advanced.hidden=!advanced.hidden;
-      $('advancedToggle').setAttribute('aria-expanded',String(!advanced.hidden));
-      $('advancedToggle').lastElementChild.textContent=advanced.hidden?'⌄':'⌃';
-    });
-  }
+  // Los controles avanzados viven junto al resumen nativo <details>; así abrirlos
+  // no obliga al usuario a bajar hasta el final de la pantalla.
+  $('quickFormatsMount').append($('sizeChips'));
+  $('quickPrimary').append($('generateButton'));
+  const preferences=document.querySelector('.generation-preferences');
+  $('description').insertAdjacentElement('afterend',preferences);
+  preferences.insertAdjacentElement('afterend',$('quickPrimary'));
   const details=$('layersDetails');
   if(details){
     const art=document.createElement('section');art.className='artwork-controls';
